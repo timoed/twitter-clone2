@@ -35,7 +35,6 @@ export function AuthProvider({ children }) {
 
   const fetchPostsByUser = useCallback(async (userId) => {
     setPostsLoading(true);
-
     try {
       const postsRef = collection(db, `users/${userId}/posts`);
       const querySnapshot = await getDocs(postsRef);
@@ -62,10 +61,6 @@ export function AuthProvider({ children }) {
         const newPostRef = doc(postsRef);
         await setDoc(newPostRef, { content: postContent, likes: [], imageUrl });
         const newPost = await getDoc(newPostRef);
-        const post = {
-          id: newPost.id,
-          ...newPost.data(),
-        };
         setPosts((prev) => [{ id: newPost.id, ...newPost.data() }, ...prev]);
       } catch (error) {
         console.error(error);
@@ -73,6 +68,44 @@ export function AuthProvider({ children }) {
     },
     [uploadFile],
   );
+
+  const likePost = useCallback(async (userId, postId) => {
+    try {
+      const postRef = doc(db, `users/${userId}/posts/${postId}`);
+      const docSnap = await getDoc(postRef);
+
+      if (docSnap.exists()) {
+        const postData = docSnap.data();
+        const likes = [...(postData.likes || []), userId];
+        await setDoc(postRef, { ...postData, likes });
+
+        setPosts((prev) =>
+          prev.map((post) => (post.id === postId ? { ...post, likes } : post)),
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  const removeLikeFromPost = useCallback(async (userId, postId) => {
+    try {
+      const postRef = doc(db, `users/${userId}/posts/${postId}`);
+      const docSnap = await getDoc(postRef);
+
+      if (docSnap.exists()) {
+        const postData = docSnap.data();
+        const likes = (postData.likes || []).filter((id) => id !== userId);
+        await setDoc(postRef, { ...postData, likes });
+
+        setPosts((prev) =>
+          prev.map((post) => (post.id === postId ? { ...post, likes } : post)),
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
 
   const updatePost = useCallback(
     async (userId, postId, newPostContent, newFile) => {
@@ -111,45 +144,8 @@ export function AuthProvider({ children }) {
     try {
       const postRef = doc(db, `users/${userId}/posts/${postId}`);
       await deleteDoc(postRef);
+
       setPosts((prev) => prev.filter((post) => post.id !== postId));
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
-
-  const likePost = useCallback(async (userId, postId) => {
-    try {
-      const postRef = doc(db, `users/${userId}/posts/${postId}`);
-      const docSnap = await getDoc(postRef);
-
-      if (docSnap.exists()) {
-        const postData = docSnap.data();
-        const likes = [...(postData.likes || []), userId];
-        await setDoc(postRef, { ...postData, likes });
-
-        setPosts((prev) =>
-          prev.map((post) => (post.id === postId ? { ...post, likes } : post)),
-        );
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
-
-  const removeLikeFromPost = useCallback(async (userId, postId) => {
-    try {
-      const postRef = doc(db, `users/${userId}/posts/${postId}`);
-      const docSnap = await getDoc(postRef);
-
-      if (docSnap.exists()) {
-        const postData = docSnap.data();
-        const likes = (postData.likes || []).filter((id) => id !== userId);
-        await setDoc(postRef, { ...postData, likes });
-
-        setPosts((prev) =>
-          prev.map((post) => (post.id === postId ? { ...post, likes } : post)),
-        );
-      }
     } catch (error) {
       console.error(error);
     }
