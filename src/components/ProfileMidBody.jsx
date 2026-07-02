@@ -1,8 +1,8 @@
 import { jwtDecode } from "jwt-decode";
-import { useEffect } from "react";
+import { useEffect, useContext } from "react";
 import { Button, Col, Image, Nav, Row, Spinner } from "react-bootstrap";
 import ProfilePostCard from "./ProfilePostCard";
-import { usePosts } from "../contexts/PostContext";
+import { AuthContext } from "./AuthProvider";
 
 export default function ProfileMidBody() {
   const url =
@@ -10,26 +10,14 @@ export default function ProfileMidBody() {
   const pic =
     "https://pbs.twimg.com/profile_images/1587405892437221376/h167Jlb2_400x400.jpg";
 
-  // const fetchPosts = (userId) => {
-  //   fetch(`http://localhost:3000/posts/user/${userId}`)
-  //     .then((response) => response.json())
-  //     .then((data) => setPosts(data))
-  //     .catch((error) => console.error("Error:", error));
-  // };
-
-  const { posts, loading, fetchPostsByUser } = usePosts();
+  const { currentUser, posts, postsLoading, fetchPostsByUser } =
+    useContext(AuthContext);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      const token = localStorage.getItem("authToken");
-      if (token) {
-        const decodedToken = jwtDecode(token);
-        const userId = decodedToken.id;
-        await fetchPostsByUser(userId);
-      }
-    };
-    fetchPosts();
-  }, []);
+    if (currentUser) {
+      fetchPostsByUser(currentUser.uid);
+    }
+  }, [fetchPostsByUser, currentUser]);
 
   return (
     <Col sm={6} className="bg-light" style={{ border: "1px solid lightgrey" }}>
@@ -92,17 +80,11 @@ export default function ProfileMidBody() {
           <Nav.Link eventKey="link-4">Likes</Nav.Link>
         </Nav.Item>
       </Nav>
-      {loading && (
+      {postsLoading && (
         <Spinner animation="border" className="ms-3 mt-3" variant="primary" />
       )}
       {posts.length > 0 &&
-        posts.map((post) => (
-          <ProfilePostCard
-            key={post.id}
-            content={post.content}
-            postId={post.id}
-          />
-        ))}
+        posts.map((post) => <ProfilePostCard key={post.id} post={post} />)}
     </Col>
   );
 }

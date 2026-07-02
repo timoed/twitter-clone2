@@ -1,30 +1,40 @@
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
-import { useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { Button, Col, Image, Row } from "react-bootstrap";
+import { AuthContext } from "./AuthProvider";
+import UpdatePostModal from "./UpdatePostModal";
 
-export default function ProfilePostCard({ content, postId }) {
-  const [likes, setLikes] = useState([]);
-
+export default function ProfilePostCard({ post }) {
   // Decoding to get the userId
-  const token = localStorage.getItem("authToken");
-  const decode = jwtDecode(token);
-  const userId = decode.id;
+  const { content, id: postId, likes: postLikes = [], imageUrl } = post;
+  const { currentUser, likePost, removeLikeFromPost, deletePost } =
+    useContext(AuthContext);
+  const userId = currentUser?.uid;
+  const [likes, setLikes] = useState(postLikes || []);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const isLiked = likes.includes(userId);
 
   const pic =
     "https://pbs.twimg.com/profile_images/1587405892437221376/h167Jlb2_400x400.jpg";
   const BASE_URL = "http://localhost:3000";
 
-  useEffect(() => {
-    fetch(`${BASE_URL}/likes/post/${postId}`)
-      .then((response) => response.json())
-      .then((data) => setLikes(data))
-      .catch((error) => console.error("Error:", error));
-  }, [postId]);
+  const handleShowUpdateModal = () => setShowUpdateModal(true);
+  const handleCLoseUpdateModal = () => setShowUpdateModal(false);
 
-  const isLiked = likes.some((like) => like.user_id === userId);
+  const handleLike = () => {
+    if (!userId) return;
+    if (isLiked) {
+      setLikes(likes.filter((id) => id !== userId));
+      removeLikeFromPost(userId, postId);
+    } else {
+      setLikes([...likes, userId]);
+      likePost(userId, postId);
+    }
+  };
 
-  const handleLike = () => (isLiked ? removeFromLikes() : addToLikes());
+  const handleDelete = () => {
+    if (!userId) return;
+    deletePost(userId, postId);
+  };
 
   const addToLikes = () => {
     axios
@@ -67,6 +77,7 @@ export default function ProfilePostCard({ content, postId }) {
         <strong>Haris</strong>
         <span> @haris.samingan · Apr 16</span>
         <p>{content}</p>
+        {imageUrl && <Image src={imageUrl} style={{ width: 150 }} />}
         <div className="d-flex justify-content-between">
           <Button variant="light">
             <i className="bi bi-chat"></i>
@@ -85,10 +96,20 @@ export default function ProfilePostCard({ content, postId }) {
           <Button variant="light">
             <i className="bi bi-graph-up"></i>
           </Button>
-          <Button variant="light">
-            <i className="bi bi-upload"></i>
+          <Button variant="light" onClick={handleShowUpdateModal}>
+            <i className="bi bi-pencil-square"></i>
+          </Button>
+          <Button variant="light" onClick={handleDelete}>
+            <i className="bi bi-trash"></i>
           </Button>
         </div>
+
+        <UpdatePostModal
+          show={showUpdateModal}
+          handleClose={handleCLoseUpdateModal}
+          postId={postId}
+          originalPostContent={content}
+        />
       </Col>
     </Row>
   );
